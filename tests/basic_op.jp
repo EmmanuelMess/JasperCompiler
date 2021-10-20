@@ -9,7 +9,7 @@ nullv := fn () { return null; };
 
 logic_ops := fn() {
 	answer := 1 >= 1 && 1 <= 1;
-	
+
 	if (1 > 1 || 1 != 1)
 		return false;
 
@@ -68,10 +68,10 @@ expressions_as_statements := seq {
 ternary_disambiguations := seq {
 	(if (1 + 1 == 2) then "YES" else "NO");
 	 if (1 + 1 == 2) then "YES" else "NO";
-	
+
 	x := fn(a) => true;
 	if ((x)(1)) then 1 else 0;
-	
+
 	if (true)
 		if (true)
 		then 1
@@ -82,7 +82,7 @@ ternary_disambiguations := seq {
 
 	if (1 == 1)
 		1 + 1;
-	
+
 	result := 0;
 	return if (if (false) then false else true)
 	       then 1

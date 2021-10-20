@@ -79,11 +79,14 @@
   yy::parser::symbol_type make_FLOATING (const std::string &s, const yy::parser::location_type& loc);
 %}
 
-id      [a-zA-Z][a-zA-Z_0-9]*
-string  ["][^"]*["]
-int     [0-9]+
-float   [0-9]+[.][0-9]+
-blank   [ \t\r]
+function_start   fn
+return_statement return
+invoke_id        __invoke
+id               [a-zA-Z][a-zA-Z_0-9]*
+string           ["][^"]*["]
+int              [0-9]+
+float            [0-9]+[.][0-9]+
+blank            [ \t\r]
 
 %{
   // Code run each time a pattern is matched.
@@ -105,13 +108,19 @@ blank   [ \t\r]
 "/"        return yy::parser::make_SLASH  (loc);
 "("        return yy::parser::make_LPAREN (loc);
 ")"        return yy::parser::make_RPAREN (loc);
+"{"        return yy::parser::make_LBRACE (loc);
+"}"        return yy::parser::make_RBRACE (loc);
 ":="       return yy::parser::make_ASSIGN (loc);
 ";"        return yy::parser::make_STATEMENT_END (loc);
+"=>"       return yy::parser::make_FUNCTION_IMMEDIATE (loc);
 
-{string}   return make_STRING (yytext, loc);
-{int}      return make_INTEGER (yytext, loc);
-{float}    return make_FLOATING (yytext, loc);
-{id}       return yy::parser::make_IDENTIFIER (yytext, loc);
+{function_start}   return yy::parser::make_FUNCTION_START (loc);
+{return_statement} return yy::parser::make_RETURN_STATEMENT (loc);
+{invoke_id}        return yy::parser::make_INVOKE_ID (loc);
+{string}           return make_STRING (yytext, loc);
+{int}              return make_INTEGER (yytext, loc);
+{float}            return make_FLOATING (yytext, loc);
+{id}               return yy::parser::make_IDENTIFIER (yytext, loc);
 .          {
              throw yy::parser::syntax_error(loc, "invalid character: " + std::string(yytext));
 }

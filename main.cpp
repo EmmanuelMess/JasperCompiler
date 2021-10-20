@@ -14,6 +14,9 @@ int main (int argc, char *argv[]) {
 			for (const auto & variable : drv.variables) {
 				std::cout << variable.first << ": " << variable.second << '\n';
 			}
+			for (const auto & variable : drv.string_variables) {
+				std::cout << variable.first << ": " << variable.second << '\n';
+			}
 		} else {
 			res = 1;
 		}

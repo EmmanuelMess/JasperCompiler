@@ -22,6 +22,8 @@
 
 %code {
 #include "driver.hpp"
+
+std::string convert(std::string s);
 }
 
 %define api.token.prefix {TOK_}
@@ -38,6 +40,8 @@
 ;
 
 %token <std::string> IDENTIFIER "identifier"
+%token <std::string> STRING "string"
+%nterm <std::string> string_expression
 %token <JasperNumber> NUMBER "number"
 %nterm <JasperNumber> exp
 
@@ -50,7 +54,8 @@ unit: assignments { };
 assignments : %empty                 {}
             | assignments assignment {};
 
-assignment: "identifier" ":=" exp ";" { drv.variables[$1] = $3; };
+assignment : "identifier" ":=" exp ";"               { drv.variables[$1] = $3; }
+           | "identifier" ":=" string_expression ";" { drv.string_variables[$1] = $3; }
 
 %left "+" "-";
 %left "*" "/";
@@ -61,6 +66,11 @@ exp : "number"
     | exp "*" exp   { $$ = $1 * $3; }
     | exp "/" exp   { $$ = $1 / $3; }
     | "(" exp ")"   { $$ = $2; }
+
+string_expression : "string"
+                  | "identifier"                              { $$ = drv.string_variables[$1]; }
+                  | string_expression "+" string_expression   { $$ = $1 + $3; }
+                  | "(" string_expression ")"                 { $$ = $2; }
 %%
 
 void yy::parser::error (const location_type& l, const std::string& m) {

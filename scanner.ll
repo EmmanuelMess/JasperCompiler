@@ -74,15 +74,16 @@
 %option noyywrap nounput noinput batch debug
 
 %{
-  // A number symbol corresponding to the value in S.
+  yy::parser::symbol_type make_STRING (const std::string &s, const yy::parser::location_type& loc);
   yy::parser::symbol_type make_INTEGER (const std::string &s, const yy::parser::location_type& loc);
   yy::parser::symbol_type make_FLOATING (const std::string &s, const yy::parser::location_type& loc);
 %}
 
-id    [a-zA-Z][a-zA-Z_0-9]*
-int   [0-9]+
+id      [a-zA-Z][a-zA-Z_0-9]*
+string  ["][^"]*["]
+int     [0-9]+
 float   [0-9]+[.][0-9]+
-blank [ \t\r]
+blank   [ \t\r]
 
 %{
   // Code run each time a pattern is matched.
@@ -105,8 +106,9 @@ blank [ \t\r]
 "("        return yy::parser::make_LPAREN (loc);
 ")"        return yy::parser::make_RPAREN (loc);
 ":="       return yy::parser::make_ASSIGN (loc);
-";"       return yy::parser::make_STATEMENT_END (loc);
+";"        return yy::parser::make_STATEMENT_END (loc);
 
+{string}   return make_STRING (yytext, loc);
 {int}      return make_INTEGER (yytext, loc);
 {float}    return make_FLOATING (yytext, loc);
 {id}       return yy::parser::make_IDENTIFIER (yytext, loc);
@@ -132,6 +134,11 @@ yy::parser::symbol_type make_FLOATING (const std::string &s, const yy::parser::l
     throw yy::parser::syntax_error (loc, "integer is out of range: " + s);
   }
   return yy::parser::make_NUMBER (static_cast<float>(n), loc);
+}
+
+yy::parser::symbol_type make_STRING (const std::string &s, const yy::parser::location_type& loc) {
+    auto r = s.substr(1, s.size()-2);
+    return yy::parser::make_STRING (r, loc);
 }
 
 void driver::scan_begin () {

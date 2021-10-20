@@ -17,6 +17,7 @@ public:
   driver ();
 
   std::map<std::string, JasperNumber> variables;
+  std::map<std::string, std::string> string_variables;
 
   // Run the parser on file F.  Return 0 on success.
   int parse (const std::string& f);

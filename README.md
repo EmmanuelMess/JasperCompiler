@@ -8,11 +8,18 @@ A simple Jasper interpreter (for now) made with Flex and Bison.
 </div>
 
 Jasper is "a scripting language inspired by Haskell, Javascript, and modern C++. Jasper can be embedded in C++ applications", 
-it was made by [SebastianMestre et al.](https://github.com/SebastianMestre/Jasper/graphs/contributors) the official interpreter is [here](https://github.com/SebastianMestre/Jasper). This project is not endorced by any of the contributors of the official Jasper repo.
+it was made by [SebastianMestre et al.](https://github.com/SebastianMestre/Jasper/graphs/contributors) the official
+interpreter is [here](https://github.com/SebastianMestre/Jasper). This project is not 
+endorsed by any of the contributors of the official Jasper repo.
 
 ## Flex and Bison
 
-Flex and Bison are a lexer and parser respectively.
+[Flex](https://github.com/westes/flex) and [Bison](https://www.gnu.org/software/bison/) are the lexer and parser 
+respectively for this project.
+
+## LLVM
+
+The idea is to use the [LLVM IR](https://www.aosabook.org/en/llvm.html) to compile the program into an executable.
 
 ----
 <a class="imgpatreon" href="https://www.patreon.com/emmanuelmess" target="_blank">

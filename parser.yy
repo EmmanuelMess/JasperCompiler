@@ -69,8 +69,8 @@ assignment : "identifier" ":=" exp ";"               { drv.variables[$1] = $3; }
 
 %left "+" "-";
 %left "*" "/";
-exp : "integer_number"  { $$ = JasperNumber { &drv.TheContext, llvm::ConstantInt::get(drv.TheContext, { 16, $1, true }) }; }
-    | "float_number"    { $$ = JasperNumber { &drv.TheContext, llvm::ConstantFP::get(drv.TheContext, llvm::APFloat($1)) }; }
+exp : "integer_number"  { $$ = JasperNumber { &drv.context, llvm::ConstantInt::get(drv.context, { 16, $1, true }) }; }
+    | "float_number"    { $$ = JasperNumber { &drv.context, llvm::ConstantFP::get(drv.context, llvm::APFloat($1)) }; }
     | "identifier"      { $$ = drv.variables[$1]; } // TODO fix
     | exp "+" exp       { $$ = $1 + $3; }
     | exp "-" exp       { $$ = $1 - $3; }
@@ -79,7 +79,7 @@ exp : "integer_number"  { $$ = JasperNumber { &drv.TheContext, llvm::ConstantInt
     | "(" exp ")"       { $$ = $2; }
 
 string_expression : "string"                                  {
-                                                                //TODO $$ = $1;//drv.Builder.CreateGlobalStringPtr($1);
+                                                                //TODO $$ = $1;//drv.builder.CreateGlobalStringPtr($1);
                                                               }
                   | "identifier"                              { $$ = drv.string_variables[$1]; }
                   | string_expression "+" string_expression   {

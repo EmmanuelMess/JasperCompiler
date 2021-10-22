@@ -17,26 +17,26 @@ YY_DECL;
 class driver
 {
 public:
-  driver ();
-  llvm::LLVMContext TheContext;
-  llvm::IRBuilder<> Builder = llvm::IRBuilder<>(TheContext);
-  std::unique_ptr<llvm::Module> TheModule;
-  std::map<std::string, JasperNumber> variables;
-  std::map<std::string, llvm::Value*> string_variables;
+    driver ();
+	llvm::LLVMContext context;
+	llvm::IRBuilder<> builder = llvm::IRBuilder<>(context);
+	std::unique_ptr<llvm::Module> module  = std::make_unique<llvm::Module>("Basic module", context);
+	std::map<std::string, JasperNumber> variables;
+	std::map<std::string, llvm::Value*> string_variables;
 
-  // Run the parser on file F.  Return 0 on success.
-  int parse (const std::string& f);
-  // The name of the file being parsed.
-  std::string file;
-  // Whether to generate parser debug traces.
-  bool trace_parsing;
+	// Run the parser on file F.  Return 0 on success.
+	int parse (const std::string& f);
+	// The name of the file being parsed.
+	std::string file;
+	// Whether to generate parser debug traces.
+	bool trace_parsing;
 
-  // Handling the scanner.
-  void scan_begin ();
-  void scan_end ();
-  // Whether to generate scanner debug traces.
-  bool trace_scanning;
-  // The token's location used by the scanner.
-  yy::location location;
+	// Handling the scanner.
+	void scan_begin ();
+	void scan_end ();
+	// Whether to generate scanner debug traces.
+	bool trace_scanning;
+	// The token's location used by the scanner.
+	yy::location location;
 };
 #endif // ! DRIVER_HEADER

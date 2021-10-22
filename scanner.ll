@@ -133,7 +133,7 @@ yy::parser::symbol_type make_INTEGER (const std::string &s, const yy::parser::lo
   if (! (INT_MIN <= n && n <= INT_MAX && errno != ERANGE)) {
     throw yy::parser::syntax_error (loc, "integer is out of range: " + s);
   }
-  return yy::parser::make_NUMBER (static_cast<int>(n), loc);
+  return yy::parser::make_INTEGER_NUMBER (static_cast<uint64_t>(n), loc);
 }
 
 yy::parser::symbol_type make_FLOATING (const std::string &s, const yy::parser::location_type& loc) {
@@ -142,7 +142,7 @@ yy::parser::symbol_type make_FLOATING (const std::string &s, const yy::parser::l
   if (! (errno != ERANGE)) {
     throw yy::parser::syntax_error (loc, "integer is out of range: " + s);
   }
-  return yy::parser::make_NUMBER (static_cast<float>(n), loc);
+  return yy::parser::make_FLOAT_NUMBER (static_cast<float>(n), loc);
 }
 
 yy::parser::symbol_type make_STRING (const std::string &s, const yy::parser::location_type& loc) {

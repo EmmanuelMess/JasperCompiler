@@ -95,3 +95,7 @@ modules.xml
 .idea/sonarlint
 
 # End of https://www.toptal.com/developers/gitignore/api/clion+all
+/lexer.cpp
+/location.hh
+/parser.cpp
+/parser.hpp

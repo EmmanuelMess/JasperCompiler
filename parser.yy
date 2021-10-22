@@ -8,6 +8,7 @@
 
 %code requires {
 #include <string>
+#include <llvm/IR/IRBuilder.h>
 #include "jasper_number.hpp"
   class driver;
 }
@@ -47,11 +48,12 @@ std::string convert(std::string s);
 
 %token <std::string> IDENTIFIER "identifier"
 %token <std::string> STRING "string"
-%nterm <std::string> string_expression
-%token <JasperNumber> NUMBER "number"
+%nterm <llvm::Value*> string_expression
+%token <float> FLOAT_NUMBER "float_number"
+%token <unsigned int> INTEGER_NUMBER "integer_number"
 %nterm <JasperNumber> exp
 
-%printer { yyo << $$; } <*>;
+//%printer { yyo << $$; } <*>;
 
 %%
 %start unit;
@@ -60,24 +62,29 @@ unit: assignments { };
 assignments : %empty                 {}
             | assignments assignment {};
 
-assignment : "identifier" ":=" exp ";"               { drv.variables[$1] = $3; }
-           | "identifier" ":=" string_expression ";" { drv.string_variables[$1] = $3; }
+assignment : "identifier" ":=" exp ";"               { drv.variables[$1] = $3; } // TODO have variable names
+           | "identifier" ":=" string_expression ";" { drv.string_variables[$1] = $3; } // TODO have variable names
            | "identifier" ":=" function ";"          { }
            | "__invoke" ":=" function ";"            { }
 
 %left "+" "-";
 %left "*" "/";
-exp : "number"
-    | "identifier"  { $$ = drv.variables[$1]; }
-    | exp "+" exp   { $$ = $1 + $3; }
-    | exp "-" exp   { $$ = $1 - $3; }
-    | exp "*" exp   { $$ = $1 * $3; }
-    | exp "/" exp   { $$ = $1 / $3; }
-    | "(" exp ")"   { $$ = $2; }
+exp : "integer_number"  { $$ = JasperNumber { &drv.TheContext, llvm::ConstantInt::get(drv.TheContext, { 16, $1, true }) }; }
+    | "float_number"    { $$ = JasperNumber { &drv.TheContext, llvm::ConstantFP::get(drv.TheContext, llvm::APFloat($1)) }; }
+    | "identifier"      { $$ = drv.variables[$1]; } // TODO fix
+    | exp "+" exp       { $$ = $1 + $3; }
+    | exp "-" exp       { $$ = $1 - $3; }
+    | exp "*" exp       { $$ = $1 * $3; }
+    | exp "/" exp       { $$ = $1 / $3; }
+    | "(" exp ")"       { $$ = $2; }
 
-string_expression : "string"
+string_expression : "string"                                  {
+                                                                //TODO $$ = $1;//drv.Builder.CreateGlobalStringPtr($1);
+                                                              }
                   | "identifier"                              { $$ = drv.string_variables[$1]; }
-                  | string_expression "+" string_expression   { $$ = $1 + $3; }
+                  | string_expression "+" string_expression   {
+                                                                //TODO $$ = $1;//TODO
+                                                              }
                   | "(" string_expression ")"                 { $$ = $2; }
 
 function : "fn" "(" function_arguments ")" function_body

@@ -2,6 +2,9 @@
 #define DRIVER_HEADER
 #include <string>
 #include <map>
+#include <memory>
+#include <llvm/IR/LLVMContext.h>
+#include <llvm/IR/IRBuilder.h>
 #include "parser.hpp"
 #include "jasper_number.hpp"
 
@@ -15,9 +18,11 @@ class driver
 {
 public:
   driver ();
-
+  llvm::LLVMContext TheContext;
+  llvm::IRBuilder<> Builder = llvm::IRBuilder<>(TheContext);
+  std::unique_ptr<llvm::Module> TheModule;
   std::map<std::string, JasperNumber> variables;
-  std::map<std::string, std::string> string_variables;
+  std::map<std::string, llvm::Value*> string_variables;
 
   // Run the parser on file F.  Return 0 on success.
   int parse (const std::string& f);

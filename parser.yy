@@ -11,11 +11,11 @@
 #include <llvm/IR/IRBuilder.h>
 #include "jasper_number.hpp"
 #include "jasper_function.hpp"
-  class driver;
+  class Driver;
 }
 
 // The parsing context.
-%param { driver& drv }
+%param { Driver& driver }
 
 %locations
 
@@ -65,11 +65,11 @@ unit: assignments { };
 assignments : %empty                 {}
             | assignments assignment {};
 
-assignment : "identifier" ":=" exp ";"               { drv.variables[$1] = $3; } // TODO have variable names
-           | "identifier" ":=" string_expression ";" { drv.string_variables[$1] = $3; } // TODO have variable names
+assignment : "identifier" ":=" exp ";"               { driver.variables[$1] = $3; } // TODO have variable names
+           | "identifier" ":=" string_expression ";" { driver.string_variables[$1] = $3; } // TODO have variable names
            | "identifier" ":=" function ";"          {
                                                         llvm::FunctionType *functionType = llvm::FunctionType::get($3.returnType, $3.argumentTypes, false);
-                                                        llvm::Function *function = llvm::Function::Create(functionType, llvm::Function::ExternalLinkage, $1, drv.module.get());
+                                                        llvm::Function *function = llvm::Function::Create(functionType, llvm::Function::ExternalLinkage, $1, driver.module.get());
 
                                                         auto it = $3.argumentNames.begin();
                                                         for (auto &arg : function->args()) {
@@ -77,13 +77,13 @@ assignment : "identifier" ":=" exp ";"               { drv.variables[$1] = $3; }
                                                             ++it;
                                                         }
                                                      }
-           | "__invoke" ":=" function ";"            { llvm::Function *function = drv.module->getFunction("__invoke"); }
+           | "__invoke" ":=" function ";"            { llvm::Function *function = driver.module->getFunction("__invoke"); }
 
 %left "+" "-";
 %left "*" "/";
-exp : "integer_number"  { $$ = JasperNumber { &drv.context, llvm::ConstantInt::get(drv.context, { 16, $1, true }) }; }
-    | "float_number"    { $$ = JasperNumber { &drv.context, llvm::ConstantFP::get(drv.context, llvm::APFloat($1)) }; }
-    | "identifier"      { $$ = drv.variables[$1]; } // TODO fix
+exp : "integer_number"  { $$ = JasperNumber { &driver.context, llvm::ConstantInt::get(driver.context, { 16, $1, true }) }; }
+    | "float_number"    { $$ = JasperNumber { &driver.context, llvm::ConstantFP::get(driver.context, llvm::APFloat($1)) }; }
+    | "identifier"      { $$ = driver.variables[$1]; } // TODO fix
     | exp "+" exp       { $$ = $1 + $3; }
     | exp "-" exp       { $$ = $1 - $3; }
     | exp "*" exp       { $$ = $1 * $3; }
@@ -91,16 +91,16 @@ exp : "integer_number"  { $$ = JasperNumber { &drv.context, llvm::ConstantInt::g
     | "(" exp ")"       { $$ = $2; }
 
 string_expression : "string"                                  {
-                                                                //TODO $$ = $1;//drv.builder.CreateGlobalStringPtr($1);
+                                                                //TODO $$ = $1;//driver.builder.CreateGlobalStringPtr($1);
                                                               }
-                  | "identifier"                              { $$ = drv.string_variables[$1]; }
+                  | "identifier"                              { $$ = driver.string_variables[$1]; }
                   | string_expression "+" string_expression   {
                                                                 //TODO $$ = $1;//TODO
                                                               }
                   | "(" string_expression ")"                 { $$ = $2; }
 
-function : "fn" "(" function_arguments ")" function_body      { $$ = JasperFunction { .returnType = llvm::Type::getVoidTy(drv.context) }; }
-         | "fn" "(" function_arguments ")" "=>" exp           { $$ = JasperFunction { .returnType = llvm::Type::getVoidTy(drv.context) }; }
+function : "fn" "(" function_arguments ")" function_body      { $$ = JasperFunction { .returnType = llvm::Type::getVoidTy(driver.context) }; }
+         | "fn" "(" function_arguments ")" "=>" exp           { $$ = JasperFunction { .returnType = llvm::Type::getVoidTy(driver.context) }; }
 
 function_arguments : %empty                                   { $$ = std::vector<std::string>(); }
                    | function_arguments "identifier"          { $1.emplace_back($2); $$ = $1; }
@@ -114,8 +114,8 @@ void yy::parser::error (const location_type& l, const std::string& m) {
 }
 
 /*
-llvm::Function *function = drv.module->getFunction($1);
-llvm::BasicBlock *block = llvm::BasicBlock::Create(drv.context, "entry", $3);
+llvm::Function *function = driver.module->getFunction($1);
+llvm::BasicBlock *block = llvm::BasicBlock::Create(driver.context, "entry", $3);
 Builder.SetInsertPoint(block);
 functionVariables.emplace_back();
 for (auto &arg : function->args()) {

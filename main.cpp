@@ -13,7 +13,7 @@
 #include "driver.hpp"
 #include "jasper_number.hpp"
 
-static bool createExecutableObject(driver &driver) {
+static bool createExecutableObject(Driver &driver) {
 	// Initialize the target registry etc.
 	llvm::InitializeAllTargetInfos();
 	llvm::InitializeAllTargets();
@@ -72,21 +72,21 @@ static bool createExecutableObject(driver &driver) {
 
 int main (int argc, char *argv[]) {
 	int res = 0;
-	driver drv;
+	Driver driver;
 	for (int i = 1; i < argc; ++i) {
 		if (argv[i] == std::string("-p")) {
-			drv.trace_parsing = true;
+			driver.trace_parsing = true;
 		} else if (argv[i] == std::string("-s")) {
-			drv.trace_scanning = true;
-		} else if (!drv.parse(argv[i])) {
-			for (const auto & variable : drv.variables) {
+			driver.trace_scanning = true;
+		} else if (!driver.parse(argv[i])) {
+			for (const auto & variable : driver.variables) {
 				std::cout << variable.first << ": " << variable.second << '\n';
 			}
-			for (const auto & variable : drv.string_variables) {
+			for (const auto & variable : driver.string_variables) {
 				std::cout << variable.first << ": " << variable.second << '\n';
 			}
 
-			createExecutableObject(drv);
+			createExecutableObject(driver);
 		} else {
 			res = 1;
 		}

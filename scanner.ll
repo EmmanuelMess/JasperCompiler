@@ -95,7 +95,7 @@ blank            [ \t\r]
 %%
 %{
   // A handy shortcut to the location held by the driver.
-  yy::location& loc = drv.location;
+  yy::location& loc = driver.location;
   // Code run each time yylex is called.
   loc.step ();
 %}
@@ -150,7 +150,7 @@ yy::parser::symbol_type make_STRING (const std::string &s, const yy::parser::loc
     return yy::parser::make_STRING (r, loc);
 }
 
-void driver::scan_begin () {
+void Driver::scan_begin () {
   yy_flex_debug = trace_scanning;
   if (file.empty () || file == "-") {
     yyin = stdin;
@@ -160,6 +160,6 @@ void driver::scan_begin () {
   }
 }
 
-void driver::scan_end () {
+void Driver::scan_end () {
   fclose (yyin);
 }

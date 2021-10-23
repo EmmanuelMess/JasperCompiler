@@ -9,15 +9,15 @@
 #include "jasper_number.hpp"
 
 // Give Flex the prototype of yylex we want ...
-# define YY_DECL yy::parser::symbol_type yylex (driver& drv)
+# define YY_DECL yy::parser::symbol_type yylex (Driver& driver)
 // ... and declare it for the parser's sake.
 YY_DECL;
 
 // Conducting the whole scanning and parsing of Calc++.
-class driver
+class Driver
 {
 public:
-    driver ();
+    Driver ();
 	llvm::LLVMContext context;
 	llvm::IRBuilder<> builder = llvm::IRBuilder<>(context);
 	std::unique_ptr<llvm::Module> module  = std::make_unique<llvm::Module>("Basic module", context);

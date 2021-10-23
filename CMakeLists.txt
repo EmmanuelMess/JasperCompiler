@@ -34,8 +34,7 @@ string(STRIP ${CMAKE_CXX_FLAGS} CMAKE_CXX_FLAGS)
 
 string(APPEND CMAKE_CXX_FLAGS " -fexceptions")
 
-add_executable(JasperCompiler
-    ${BISON_JasperCompiler_OUTPUTS}
+set(SOURCES ${BISON_JasperCompiler_OUTPUTS}
     ${FLEX_JasperCompiler_OUTPUTS}
     main.cpp
     driver.cpp
@@ -45,5 +44,13 @@ add_executable(JasperCompiler
     jasper_function.cpp
     jasper_function.hpp)
 
+add_executable(JasperCompiler ${SOURCES})
+
 llvm_map_components_to_libnames(llvm_libs support core irreader)
 target_link_libraries(JasperCompiler ${llvm_libs})
+
+add_executable(JasperCompilerTestExecutable
+    ${SOURCES} bin/test.cpp)
+
+target_link_libraries(JasperCompilerTestExecutable
+    ${CMAKE_CURRENT_SOURCE_DIR}/bin/output.o)

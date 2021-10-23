@@ -17,6 +17,23 @@ include_directories(${LLVM_INCLUDE_DIRS})
 separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})
 add_definitions(${LLVM_DEFINITIONS_LIST})
 
+link_libraries()
+execute_process(COMMAND llvm-config --libs OUTPUT_VARIABLE LIBS)
+execute_process(COMMAND llvm-config --system-libs OUTPUT_VARIABLE SYS_LIBS)
+execute_process(COMMAND llvm-config --ldflags OUTPUT_VARIABLE LDF)
+message(STATUS "Found LLVM" ${LIBS})
+
+string(STRIP ${LIBS} LIBS)
+string(STRIP ${SYS_LIBS} SYS_LIBS)
+string(STRIP ${LDF} LDF)
+
+link_libraries(${LIBS} ${SYS_LIBS} ${LDF})
+
+execute_process(COMMAND llvm-config --cxxflags OUTPUT_VARIABLE CMAKE_CXX_FLAGS)
+string(STRIP ${CMAKE_CXX_FLAGS} CMAKE_CXX_FLAGS)
+
+string(APPEND CMAKE_CXX_FLAGS " -fexceptions")
+
 add_executable(JasperCompiler
     ${BISON_JasperCompiler_OUTPUTS}
     ${FLEX_JasperCompiler_OUTPUTS}
@@ -24,7 +41,9 @@ add_executable(JasperCompiler
     driver.cpp
     driver.hpp
     jasper_number.cpp
-    jasper_number.hpp)
+    jasper_number.hpp
+    jasper_function.cpp
+    jasper_function.hpp)
 
 llvm_map_components_to_libnames(llvm_libs support core irreader)
 target_link_libraries(JasperCompiler ${llvm_libs})

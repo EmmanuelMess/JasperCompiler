@@ -44,7 +44,6 @@ std::string convert(std::string s);
   FUNCTION_START "fn"
   RETURN_STATEMENT "return"
   FUNCTION_IMMEDIATE  "=>"
-  INVOKE_ID "__invoke"
 ;
 
 %token <std::string> IDENTIFIER "identifier"
@@ -77,7 +76,6 @@ assignment : "identifier" ":=" exp ";"               { driver.variables[$1] = $3
                                                             ++it;
                                                         }
                                                      }
-           | "__invoke" ":=" function ";"            { llvm::Function *function = driver.module->getFunction("__invoke"); }
 
 %left "+" "-";
 %left "*" "/";

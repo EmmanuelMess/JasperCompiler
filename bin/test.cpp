@@ -1,6 +1,6 @@
 
-extern void __invoke();
+extern int __invoke();
 
 int main() {
-	__invoke();
+	return __invoke();
 }

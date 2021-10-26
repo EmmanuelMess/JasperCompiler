@@ -45,27 +45,47 @@ static bool createExecutableObject(Driver &driver) {
 	driver.module->setDataLayout(targetMachine->createDataLayout());
 
 	std::filesystem::create_directories("./bin");
-	auto filename = "bin/output.o";
-	std::error_code EC;
-	llvm::raw_fd_ostream dest(filename, EC, llvm::sys::fs::OF_None);
 
-	if (EC) {
-		llvm::errs() << "Could not open file: " << EC.message();
-		return false;
-	}
+	if(![&]{
+		auto filename = "bin/output.o";
+		std::error_code EC;
+		llvm::raw_fd_ostream dest(filename, EC, llvm::sys::fs::OF_None);
 
-	llvm::legacy::PassManager pass;
-	auto filetype =  llvm::CGFT_ObjectFile;
+		if (EC) {
+			llvm::errs() << "Could not open file: " << EC.message();
+			return false;
+		}
 
-	if (targetMachine->addPassesToEmitFile(pass, dest, nullptr, filetype)) {
-		llvm::errs() << "targetMachine can't emit a file of this type";
-		return false;
-	}
+		llvm::legacy::PassManager pass;
+		auto filetype = llvm::CGFT_AssemblyFile;
 
-	pass.run(*driver.module);
-	dest.flush();
+		if (targetMachine->addPassesToEmitFile(pass, dest, nullptr, filetype)) {
+			llvm::errs() << "targetMachine can't emit a file of this type";
+			return false;
+		}
 
-	llvm::outs() << "Wrote " << filename << "\n";
+		pass.run(*driver.module);
+		dest.flush();
+		return true;
+	}()) return false;
+
+	if(![&] {
+		auto filename = "bin/assembly.s";
+		std::error_code EC;
+		llvm::raw_fd_ostream dest(filename, EC, llvm::sys::fs::OF_None);
+
+		llvm::legacy::PassManager pass;
+		auto filetype = llvm::CGFT_AssemblyFile;
+
+		if (targetMachine->addPassesToEmitFile(pass, dest, nullptr, filetype)) {
+			llvm::errs() << "targetMachine can't emit a file of this type";
+			return false;
+		}
+
+		pass.run(*driver.module);
+		dest.flush();
+		return true;
+	}()) return false;
 
 	return true;
 }

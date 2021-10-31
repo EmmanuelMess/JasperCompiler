@@ -23,6 +23,8 @@ public:
 	std::unique_ptr<llvm::Module> module  = std::make_unique<llvm::Module>("Basic module", context);
 	std::map<std::string, JasperNumber> variables;
 	std::map<std::string, llvm::Value*> string_variables;
+	std::map<std::string, llvm::Function*> functions;
+	std::string currentFunction;
 	std::vector<std::map<std::string, llvm::Value*>> functionVariables;
 
 	// Run the parser on file F.  Return 0 on success.

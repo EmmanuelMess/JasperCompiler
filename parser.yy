@@ -59,7 +59,7 @@ std::string convert(std::string s);
 
 %%
 %start unit;
-unit: assignments { };
+unit: assignments { verifyModule(*driver.module); };
 
 assignments : %empty                 {}
             | assignments assignment {};
@@ -75,6 +75,12 @@ assignment : "identifier" ":=" exp ";"               { driver.variables[$1] = $3
                                                             arg.setName(*it);
                                                             ++it;
                                                         }
+
+                                                        driver.functions[$1] = function;
+                                                        driver.currentFunction = $1;
+
+                                                        llvm::BasicBlock* block = llvm::BasicBlock::Create(driver.context, "entry", function);
+                                                        driver.builder.SetInsertPoint(block);
                                                      }
 
 %left "+" "-";
@@ -98,12 +104,21 @@ string_expression : "string"                                  {
                   | "(" string_expression ")"                 { $$ = $2; }
 
 function : "fn" "(" function_arguments ")" function_body      { $$ = JasperFunction { .returnType = llvm::Type::getVoidTy(driver.context) }; }
-         | "fn" "(" function_arguments ")" "=>" exp           { $$ = JasperFunction { .returnType = llvm::Type::getVoidTy(driver.context) }; }
+         | "fn" "(" function_arguments ")" "=>" exp           {
+                                                                $$ = JasperFunction { .returnType = llvm::Type::getVoidTy(driver.context) };
+                                                                driver.builder.CreateRet($6.value);
+                                                                verifyFunction(*driver.functions[driver.currentFunction]);
+                                                                driver.currentFunction = "";
+                                                              }
 
 function_arguments : %empty                                   { $$ = std::vector<std::string>(); }
                    | function_arguments "identifier"          { $1.emplace_back($2); $$ = $1; }
 
-function_body : "{" assignments "return" exp ";" "}"
+function_body : "{" assignments "return" exp ";" "}"          {
+                                                                driver.builder.CreateRet($4.value);
+                                                                verifyFunction(*driver.functions[driver.currentFunction]);
+                                                                driver.currentFunction = "";
+                                                              }
 
 %%
 

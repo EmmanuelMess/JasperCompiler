@@ -107,6 +107,8 @@ int main (int argc, char *argv[]) {
 			}
 
 			createExecutableObject(driver);
+
+			driver.module->print(llvm::errs(), nullptr);
 		} else {
 			res = 1;
 		}

@@ -57,7 +57,7 @@ static bool createExecutableObject(Driver &driver) {
 		}
 
 		llvm::legacy::PassManager pass;
-		auto filetype = llvm::CGFT_AssemblyFile;
+		auto filetype = llvm::CGFT_ObjectFile;
 
 		if (targetMachine->addPassesToEmitFile(pass, dest, nullptr, filetype)) {
 			llvm::errs() << "targetMachine can't emit a file of this type";

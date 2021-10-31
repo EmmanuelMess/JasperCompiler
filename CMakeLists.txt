@@ -49,8 +49,8 @@ add_executable(JasperCompiler ${SOURCES})
 llvm_map_components_to_libnames(llvm_libs support core irreader)
 target_link_libraries(JasperCompiler ${llvm_libs})
 
-add_executable(JasperCompilerTestExecutable
-    ${SOURCES} bin/test.cpp)
+file(WRITE ${PROJECT_BINARY_DIR}/empty.cpp "")
+add_executable(JasperCompilerTestExecutable ${PROJECT_BINARY_DIR}/empty.cpp)
 
 target_link_libraries(JasperCompilerTestExecutable
     ${CMAKE_CURRENT_SOURCE_DIR}/bin/output.o)

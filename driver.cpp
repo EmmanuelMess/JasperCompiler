@@ -28,7 +28,7 @@ int Driver::parse (const std::string &f) {
 	int res = parse();
 	scan_end();
 
-	builder.CreateRet(llvm::ConstantInt::get(context, { 32, 1, true }));
+	builder.CreateRet(llvm::ConstantInt::get(context, { 32, 0, true }));
 	verifyFunction(*functions[MAIN_FUNCTION]);
 	currentFunction = "";
 

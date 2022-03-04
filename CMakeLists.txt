@@ -1,56 +1,113 @@
 cmake_minimum_required(VERSION 3.20)
-project(JasperCompiler)
+project(Interpreter)
+project(Tests)
+project(Playground)
 
 set(CMAKE_CXX_STANDARD 20)
 
-find_package(BISON 2.1.3)
-find_package(FLEX 2.5.13)
-find_package(LLVM REQUIRED CONFIG)
+set(COMMON
+    src/algorithms/tarjan_solver.cpp
+    src/algorithms/tarjan_solver.hpp
+    src/algorithms/unification.cpp
+    src/algorithms/unification.hpp
+    src/log/basic_stream.cpp
+    src/log/basic_stream.hpp
+    src/log/log.cpp
+    src/log/log.hpp
+    src/log/stream.cpp
+    src/log/stream.hpp
+    src/utils/polymorphic_block_allocator.cpp
+    src/utils/polymorphic_block_allocator.hpp
+    src/utils/polymorphic_dumb_allocator.cpp
+    src/utils/polymorphic_dumb_allocator.hpp
+    src/utils/block_allocator.cpp
+    src/utils/block_allocator.hpp
+    src/utils/interned_string.cpp
+    src/utils/interned_string.hpp
+    src/utils/span.cpp
+    src/utils/span.hpp
+    src/utils/string_set.cpp
+    src/utils/string_set.hpp
+    src/utils/string_view.cpp
+    src/utils/string_view.hpp
+    src/ast.cpp
+    src/ast.hpp
+    src/compile_time_environment.cpp
+    src/compile_time_environment.hpp
+    src/compute_offsets.cpp
+    src/compute_offsets.hpp
+    src/cst.cpp
+    src/cst.hpp
+    src/ct_eval.cpp
+    src/ct_eval.hpp
+    src/error_report.cpp
+    src/error_report.hpp
+    src/lexer.cpp
+    src/lexer.hpp
+    src/match_identifiers.cpp
+    src/match_identifiers.hpp
+    src/metacheck.cpp
+    src/metacheck.hpp
+    src/meta_unifier.cpp
+    src/meta_unifier.hpp
+    src/parser.cpp
+    src/parser.hpp
+    src/source_location.cpp
+    src/source_location.hpp
+    src/symbol_table.cpp
+    src/symbol_table.hpp
+    src/token.cpp
+    src/token.hpp
+    src/typecheck.cpp
+    src/typecheck.hpp
+    src/typechecker.cpp
+    src/typechecker.hpp
+    src/typesystem.cpp
+    src/typesystem.hpp)
 
-BISON_TARGET(JasperCompiler parser.yy ${CMAKE_CURRENT_SOURCE_DIR}/parser.cpp
-    DEFINES_FILE ${CMAKE_CURRENT_SOURCE_DIR}/parser.hpp)
-FLEX_TARGET(JasperCompiler scanner.ll ${CMAKE_CURRENT_SOURCE_DIR}/lexer.cpp)
+set(INTERPRETER
+    src/interpreter/error.cpp
+    src/interpreter/error.hpp
+    src/interpreter/eval.cpp
+    src/interpreter/eval.hpp
+    src/interpreter/execute.cpp
+    src/interpreter/execute.hpp
+    src/interpreter/exit_status_tag.hpp
+    src/interpreter/garbage_collector.cpp
+    src/interpreter/garbage_collector.hpp
+    src/interpreter/gc_ptr.cpp
+    src/interpreter/gc_ptr.hpp
+    src/interpreter/gc_cell.cpp
+    src/interpreter/gc_cell.hpp
+    src/interpreter/interpreter.cpp
+    src/interpreter/interpreter.hpp
+    src/interpreter/native.cpp
+    src/interpreter/native.hpp
+    src/interpreter/stack.cpp
+    src/interpreter/stack.hpp
+    src/interpreter/utils.cpp
+    src/interpreter/utils.hpp
+    src/interpreter/value.cpp
+    src/interpreter/value.hpp)
 
-include_directories(${CMAKE_CURRENT_BINARY_DIR})
+set(TEST
+    src/test/main.cpp
+    src/test/test_set.cpp
+    src/test/test_set.hpp
+    src/test/tester.cpp
+    src/test/tester.hpp)
 
-include_directories(${LLVM_INCLUDE_DIRS})
-separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})
-add_definitions(${LLVM_DEFINITIONS_LIST})
+add_compile_options(-std=c++2a -Wall -Wextra -Wshadow -Wnon-virtual-dtor -pedantic -Wnull-dereference -Weffc++)
 
-link_libraries()
-execute_process(COMMAND llvm-config --libs OUTPUT_VARIABLE LIBS)
-execute_process(COMMAND llvm-config --system-libs OUTPUT_VARIABLE SYS_LIBS)
-execute_process(COMMAND llvm-config --ldflags OUTPUT_VARIABLE LDF)
-message(STATUS "Found LLVM" ${LIBS})
-
-string(STRIP ${LIBS} LIBS)
-string(STRIP ${SYS_LIBS} SYS_LIBS)
-string(STRIP ${LDF} LDF)
-
-link_libraries(${LIBS} ${SYS_LIBS} ${LDF})
-
-execute_process(COMMAND llvm-config --cxxflags OUTPUT_VARIABLE CMAKE_CXX_FLAGS)
-string(STRIP ${CMAKE_CXX_FLAGS} CMAKE_CXX_FLAGS)
-
-string(APPEND CMAKE_CXX_FLAGS " -fexceptions")
-
-set(SOURCES ${BISON_JasperCompiler_OUTPUTS}
-    ${FLEX_JasperCompiler_OUTPUTS}
-    main.cpp
-    driver.cpp
-    driver.hpp
-    jasper_number.cpp
-    jasper_number.hpp
-    jasper_function.cpp
-    jasper_function.hpp)
-
-add_executable(JasperCompiler ${SOURCES})
-
-llvm_map_components_to_libnames(llvm_libs support core irreader)
-target_link_libraries(JasperCompiler ${llvm_libs})
-
-file(WRITE ${PROJECT_BINARY_DIR}/empty.cpp "")
-add_executable(JasperCompilerTestExecutable ${PROJECT_BINARY_DIR}/empty.cpp)
-
-target_link_libraries(JasperCompilerTestExecutable
-    ${CMAKE_CURRENT_SOURCE_DIR}/bin/output.o)
+add_executable(Interpreter
+    src/interpreter/main.cpp
+    ${COMMON}
+    ${INTERPRETER})
+add_executable(Tests
+    src/test/main.cpp
+    ${COMMON}
+    ${INTERPRETER}
+    ${TEST})
+add_executable(Playground
+    src/playground/main.cpp
+    ${COMMON})

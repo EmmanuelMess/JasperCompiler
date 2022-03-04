@@ -1,1 +1,0 @@
-__invoke := fn() { return 0; };

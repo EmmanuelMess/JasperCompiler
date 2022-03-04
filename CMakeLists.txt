@@ -5,6 +5,31 @@ project(Playground)
 
 set(CMAKE_CXX_STANDARD 20)
 
+find_package(LLVM REQUIRED CONFIG)
+
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
+
+include_directories(${LLVM_INCLUDE_DIRS})
+separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})
+add_definitions(${LLVM_DEFINITIONS_LIST})
+
+link_libraries()
+execute_process(COMMAND llvm-config-14 --libs OUTPUT_VARIABLE LIBS)
+execute_process(COMMAND llvm-config-14 --system-libs OUTPUT_VARIABLE SYS_LIBS)
+execute_process(COMMAND llvm-config-14 --ldflags OUTPUT_VARIABLE LDF)
+message(STATUS "Found LLVM" ${LIBS})
+
+string(STRIP ${LIBS} LIBS)
+string(STRIP ${SYS_LIBS} SYS_LIBS)
+string(STRIP ${LDF} LDF)
+
+link_libraries(${LIBS} ${SYS_LIBS} ${LDF})
+
+execute_process(COMMAND llvm-config-14 --cxxflags OUTPUT_VARIABLE CMAKE_CXX_FLAGS)
+string(STRIP ${CMAKE_CXX_FLAGS} CMAKE_CXX_FLAGS)
+
+string(APPEND CMAKE_CXX_FLAGS " -fexceptions")
+
 set(COMMON
     src/algorithms/tarjan_solver.cpp
     src/algorithms/tarjan_solver.hpp
@@ -128,10 +153,14 @@ add_executable(Interpreter
     src/interpreter/main.cpp
     ${COMMON}
     ${INTERPRETER})
+
 add_executable(Compiler
     src/compiler/main.cpp
     ${COMMON}
     ${COMPILER})
+llvm_map_components_to_libnames(llvm_libs support core irreader)
+target_link_libraries(Compiler ${llvm_libs})
+
 add_executable(Tests
     src/test/main.cpp
     ${COMMON}

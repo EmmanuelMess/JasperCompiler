@@ -4,6 +4,7 @@
 
 #include <cassert>
 #include <climits>
+#include <filesystem>
 
 #include "../log/log.hpp"
 #include "../typechecker.hpp"
@@ -17,7 +18,7 @@
 namespace Compiler {
 
 static void compile_stmt(AST::AST* ast, Compiler& e) {
-	compile(ast, e);
+	compileAny(ast, e);
 	if (is_expression(ast))
 		e.m_stack.pop_unsafe();
 }
@@ -26,7 +27,7 @@ void compile(AST::Declaration* ast, Compiler& e) {
 	auto ref = e.new_reference(Value {nullptr});
 	e.m_stack.push(ref.as_value());
 	if (ast->m_value) {
-		compile(ast->m_value, e);
+		compileAny(ast->m_value, e);
 		auto value = e.m_stack.pop_unsafe();
 		ref->m_value = value_of(value);
 	}
@@ -38,27 +39,39 @@ void compile(AST::Program* ast, Compiler& e) {
 		for (auto decl : comp) {
 			auto ref = e.new_reference(e.null());
 			e.global_declare_direct(decl->identifier_text(), ref.get());
-			compile(decl->m_value, e);
+			compileAny(decl->m_value, e);
 			auto value = e.m_stack.pop_unsafe();
 			ref->m_value = value_of(value);
 		}
 	}
 }
 
-void compile(AST::NumberLiteral* ast, Compiler& e) {
-	e.push_float(ast->value());
+llvm::Value * compile(AST::NumberLiteral* ast, Compiler& e) {
+	return llvm::ConstantFP::get(e.m_context, llvm::APFloat(ast->value()));
 }
 
-void compile(AST::IntegerLiteral* ast, Compiler& e) {
-	e.push_integer(ast->value());
+llvm::Value * compile(AST::IntegerLiteral* ast, Compiler& e) {
+	return llvm::ConstantInt::get(e.m_context, llvm::APInt(32, ast->value()));
 }
 
-void compile(AST::StringLiteral* ast, Compiler& e) {
-	e.push_string(ast->text());
+llvm::Constant * compile(AST::StringLiteral* ast, Compiler& e) {
+	llvm::Constant *string =
+	    llvm::ConstantDataArray::getString(e.m_context, "Error: The head has left the tape.",
+	                                 true);
+	return string;
+	//TODO PUT THIS WHERE THE STRING IS USED
+	//llvm::GlobalVariable *aberrormsg = new llvm::GlobalVariable(
+	//    *e.m_module,
+	//    string->getType(),
+	//    true,
+	//    llvm::GlobalValue::InternalLinkage,
+	//    string,
+	//    "aberrormsg");
 }
 
-void compile(AST::BooleanLiteral* ast, Compiler& e) {
-	e.push_boolean(ast->m_value);
+llvm::Value * compile(AST::BooleanLiteral* ast, Compiler& e) {
+	// TODO this is hack, I think, it uses a 1 bit number to store the bool
+	return llvm::ConstantInt::get(e.m_context, llvm::APInt(1, ast->m_value ? 1 : 0));
 }
 
 void compile(AST::NullLiteral* ast, Compiler& e) {
@@ -69,7 +82,7 @@ void compile(AST::ArrayLiteral* ast, Compiler& e) {
 	auto result = e.new_list({});
 	result->m_value.reserve(ast->m_elements.size());
 	for (auto& element : ast->m_elements) {
-		compile(element, e);
+		compileAny(element, e);
 		auto ref = e.new_reference(Value {nullptr});
 		ref->m_value = value_of(e.m_stack.pop_unsafe());
 		result->append(ref.get());
@@ -111,7 +124,7 @@ void compile(AST::Block* ast, Compiler& e) {
 
 void compile(AST::ReturnStatement* ast, Compiler& e) {
 	// TODO: proper error handling
-	compile(ast->m_value, e);
+	compileAny(ast->m_value, e);
 	auto value = e.m_stack.pop_unsafe();
 	e.save_return_value(value_of(value));
 }
@@ -128,13 +141,13 @@ void compile_call_function(Function* callee, size_t arg_count, Compiler& e) {
 	for (auto capture : callee->m_captures)
 		e.m_stack.push(Value{capture});
 
-	compile(callee->m_def->m_body, e);
+	compileAny(callee->m_def->m_body, e);
 
 }
 
 void compile(AST::CallExpression* ast, Compiler& e) {
 
-	compile(ast->m_callee, e);
+	compileAny(ast->m_callee, e);
 
 	// NOTE: keep callee on the stack
 	auto callee = value_of(e.m_stack.access(0));
@@ -147,7 +160,7 @@ void compile(AST::CallExpression* ast, Compiler& e) {
 	if (callee.type() == ValueTag::Function) {
 		for (auto expr : arglist) {
 			// put arg on stack
-			compile(expr, e);
+			compileAny(expr, e);
 
 			// wrap arg in reference
 			auto ref = e.new_reference(Value {nullptr});
@@ -162,7 +175,7 @@ void compile(AST::CallExpression* ast, Compiler& e) {
 		e.m_stack.frame_at(-1) = e.m_stack.pop_unsafe();
 	} else if (callee.type() == ValueTag::NativeFunction) {
 		for (auto expr : arglist)
-			compile(expr, e);
+			compileAny(expr, e);
 		e.m_stack.start_stack_frame(frame_start);
 		auto args = e.m_stack.frame_range(0, arg_count);
 
@@ -179,8 +192,8 @@ void compile(AST::CallExpression* ast, Compiler& e) {
 void compile(AST::IndexExpression* ast, Compiler& e) {
 	// TODO: proper error handling
 
-	compile(ast->m_callee, e);
-	compile(ast->m_index, e);
+	compileAny(ast->m_callee, e);
+	compileAny(ast->m_index, e);
 
 	auto index = e.m_stack.pop_unsafe().get_integer();
 
@@ -193,13 +206,13 @@ void compile(AST::IndexExpression* ast, Compiler& e) {
 void compile(AST::TernaryExpression* ast, Compiler& e) {
 	// TODO: proper error handling
 
-	compile(ast->m_condition, e);
+	compileAny(ast->m_condition, e);
 	auto condition = value_of(e.m_stack.pop_unsafe()).get_boolean();
 
 	if (condition)
-		compile(ast->m_then_expr, e);
+		compileAny(ast->m_then_expr, e);
 	else
-		compile(ast->m_else_expr, e);
+		compileAny(ast->m_else_expr, e);
 }
 
 void compile(AST::FunctionLiteral* ast, Compiler& e) {
@@ -218,7 +231,7 @@ void compile(AST::FunctionLiteral* ast, Compiler& e) {
 }
 
 void compile(AST::AccessExpression* ast, Compiler& e) {
-	compile(ast->m_target, e);
+	compileAny(ast->m_target, e);
 	auto rec_ptr = e.m_stack.pop_unsafe();
 	auto rec = value_as<Record>(rec_ptr);
 	e.m_stack.push(Value{rec->m_value[ast->m_member]});
@@ -245,7 +258,7 @@ void compile(AST::MatchExpression* ast, Compiler& e) {
 	assert(case_it != ast->m_cases.end());
 
 	// put the result on the top of the stack
-	compile(case_it->second.m_expression, e);
+	compileAny(case_it->second.m_expression, e);
 
 	// evil tinkering with the stack internals
 	// (we just delete the variant value from behind the result)
@@ -256,7 +269,7 @@ void compile(AST::MatchExpression* ast, Compiler& e) {
 void compile(AST::ConstructorExpression* ast, Compiler& e) {
 	// NOTE: we leave the ctor on the stack for the time being
 
-	compile(ast->m_constructor, e);
+	compileAny(ast->m_constructor, e);
 	auto constructor = value_of(e.m_stack.access(0));
 
 	if (constructor.type() == ValueTag::RecordConstructor) {
@@ -265,11 +278,11 @@ void compile(AST::ConstructorExpression* ast, Compiler& e) {
 		assert(ast->m_args.size() == record_constructor->m_keys.size());
 
 
-		// compile arguments
+		// compileAny arguments
 		// arguments start at storage_point
 		int storage_point = e.m_stack.m_stack_ptr;
 		for (size_t i = 0; i < ast->m_args.size(); ++i)
-			compile(ast->m_args[i], e);
+			compileAny(ast->m_args[i], e);
 
 		// store all arguments in record object
 		RecordType record;
@@ -292,7 +305,7 @@ void compile(AST::ConstructorExpression* ast, Compiler& e) {
 
 		assert(ast->m_args.size() == 1);
 
-		compile(ast->m_args[0], e);
+		compileAny(ast->m_args[0], e);
 		auto result = e.m_gc->new_variant(
 		    variant_constructor->m_constructor, value_of(e.m_stack.access(0)));
 
@@ -312,7 +325,7 @@ void compile(AST::SequenceExpression* ast, Compiler& e) {
 void compile(AST::IfElseStatement* ast, Compiler& e) {
 	// TODO: proper error handling
 
-	compile(ast->m_condition, e);
+	compileAny(ast->m_condition, e);
 	bool condition = value_of(e.m_stack.pop_unsafe()).get_boolean();
 
 	if (condition)
@@ -323,7 +336,7 @@ void compile(AST::IfElseStatement* ast, Compiler& e) {
 
 void compile(AST::WhileStatement* ast, Compiler& e) {
 	while (1) {
-		compile(ast->m_condition, e);
+		compileAny(ast->m_condition, e);
 		auto condition = value_of(e.m_stack.pop_unsafe()).get_boolean();
 
 		if (!condition)
@@ -351,7 +364,7 @@ void compile(AST::UnionExpression* ast, Compiler& e) {
 }
 
 void compile(AST::TypeFunctionHandle* ast, Compiler& e) {
-	compile(ast->m_syntax, e);
+	compileAny(ast->m_syntax, e);
 }
 
 void compile(AST::MonoTypeHandle* ast, Compiler& e) {
@@ -377,30 +390,58 @@ void compile(AST::Constructor* ast, Compiler& e) {
 }
 
 void compile(AST::TypeTerm* ast, Compiler& e) {
-	compile(ast->m_callee, e);
+	compileAny(ast->m_callee, e);
 }
 
-void preCompileSteps() {
-
-}
-
-void compile(AST::AST* ast, Compiler& e) {
-
-	preCompileSteps();
+llvm::Value* compileValue(AST::AST* ast, Compiler& e) {
 
 #define DISPATCH(type)                                                         \
 	case ASTTag::type:                                                    \
 		return compile(static_cast<AST::type*>(ast), e)
 
 #ifdef DEBUG
-	Log::info() << "case in compile: " << typed_ast_string[(int)ast->type()];
+	Log::info() << "case in compileAny: " << typed_ast_string[(int)ast->type()];
 #endif
 
 	switch (ast->type()) {
 		DISPATCH(NumberLiteral);
 		DISPATCH(IntegerLiteral);
-		DISPATCH(StringLiteral);
 		DISPATCH(BooleanLiteral);
+	}
+
+	Log::fatal() << "(internal) unhandled case in compileAny: "
+	             << ast_string[(int)ast->type()];
+}
+
+llvm::Constant* compileConstant(AST::AST* ast, Compiler& e) {
+
+#define DISPATCH(type)                                                         \
+	case ASTTag::type:                                                    \
+		return compile(static_cast<AST::type*>(ast), e)
+
+#ifdef DEBUG
+	Log::info() << "case in compileAny: " << typed_ast_string[(int)ast->type()];
+#endif
+
+	switch (ast->type()) {
+		DISPATCH(StringLiteral);
+	}
+
+	Log::fatal() << "(internal) unhandled case in compileAny: "
+	             << ast_string[(int)ast->type()];
+}
+
+void compileAny(AST::AST* ast, Compiler& e) {
+
+#define DISPATCH(type)                                                         \
+	case ASTTag::type:                                                    \
+		return compile(static_cast<AST::type*>(ast), e)
+
+#ifdef DEBUG
+	Log::info() << "case in compileAny: " << typed_ast_string[(int)ast->type()];
+#endif
+
+	switch (ast->type()) {
 		DISPATCH(NullLiteral);
 		DISPATCH(ArrayLiteral);
 		DISPATCH(FunctionLiteral);
@@ -430,8 +471,137 @@ void compile(AST::AST* ast, Compiler& e) {
 		DISPATCH(Constructor);
 	}
 
-	Log::fatal() << "(internal) unhandled case in compile: "
+	Log::fatal() << "(internal) unhandled case in compileAny: "
 	             << ast_string[(int)ast->type()];
+}
+
+static bool createExecutableObject(llvm::Module& module) {
+	// Initialize the target registry etc.
+	llvm::InitializeAllTargetInfos();
+	llvm::InitializeAllTargets();
+	llvm::InitializeAllTargetMCs();
+	llvm::InitializeAllAsmParsers();
+	llvm::InitializeAllAsmPrinters();
+
+	auto targetTriple = llvm::sys::getDefaultTargetTriple();
+	module.setTargetTriple(targetTriple);
+
+	std::string error;
+	auto target = llvm::TargetRegistry::lookupTarget(targetTriple, error);
+
+	// Print an error and exit if we couldn't find the requested target.
+	// This generally occurs if we've forgotten to initialise the
+	// TargetRegistry or we have a bogus target triple.
+	if (!target) {
+		llvm::errs() << error;
+		return false;
+	}
+
+	auto cpu = "generic";
+	auto features = "";
+
+	llvm::TargetOptions opt;
+	auto RM = llvm::Optional<llvm::Reloc::Model>();
+	auto targetMachine = target->createTargetMachine(targetTriple, cpu, features, opt, RM);
+
+	module.setDataLayout(targetMachine->createDataLayout());
+
+	std::filesystem::create_directories("./bin");
+
+	if(![&]{
+		    auto filename = "bin/output.o";
+		    std::error_code EC;
+		    llvm::raw_fd_ostream dest(filename, EC, llvm::sys::fs::OF_None);
+
+		    if (EC) {
+			    llvm::errs() << "Could not open file: " << EC.message();
+			    return false;
+		    }
+
+		    llvm::legacy::PassManager pass;
+		    auto filetype = llvm::CGFT_ObjectFile;
+
+		    if (targetMachine->addPassesToEmitFile(pass, dest, nullptr, filetype)) {
+			    llvm::errs() << "targetMachine can't emit a file of this type";
+			    return false;
+		    }
+
+		    pass.run(module);
+		    dest.flush();
+		    return true;
+	    }()) return false;
+
+	if(![&] {
+		    auto filename = "bin/assembly.s";
+		    std::error_code EC;
+		    llvm::raw_fd_ostream dest(filename, EC, llvm::sys::fs::OF_None);
+
+		    llvm::legacy::PassManager pass;
+		    auto filetype = llvm::CGFT_AssemblyFile;
+
+		    if (targetMachine->addPassesToEmitFile(pass, dest, nullptr, filetype)) {
+			    llvm::errs() << "targetMachine can't emit a file of this type";
+			    return false;
+		    }
+
+		    pass.run(module);
+		    dest.flush();
+		    return true;
+	    }()) return false;
+
+	return true;
+}
+
+void preCompileSteps(Compiler& e) {
+	const auto name = "BrainF";
+	e.m_module = std::make_unique<llvm::Module>(name, e.m_context);
+}
+
+void postCompileSteps(Compiler& e) {
+	if (verifyModule(*e.m_module)) {
+		llvm::errs() << "Error: module failed verification.  This shouldn't happen.\n";
+		abort();
+	}
+
+	e.m_module->print(llvm::errs(), nullptr);
+
+	createExecutableObject(*e.m_module);
+
+	llvm::llvm_shutdown();
+}
+
+
+void compile(AST::AST* ast, Compiler& e) {
+
+	preCompileSteps(e);
+
+	compileAny(ast, e);
+
+	//define i32 @main(i32 %argc, i8 **%argv)
+	llvm::FunctionType *main_func_fty = llvm::FunctionType::get(
+	    llvm::Type::getInt32Ty(e.m_module->getContext()),
+	    {llvm::Type::getInt32Ty(e.m_module->getContext()),
+	     llvm::Type::getInt8Ty(e.m_module->getContext())->getPointerTo()->getPointerTo()},
+	    false);
+	llvm::Function *main_func =
+	    llvm::Function::Create(main_func_fty, llvm::Function::ExternalLinkage, "main", e.m_module.get());
+
+	{
+		llvm::Function::arg_iterator args = main_func->arg_begin();
+		llvm::Value *arg_0 = &*args++;
+		arg_0->setName("argc");
+		llvm::Value *arg_1 = &*args++;
+		arg_1->setName("argv");
+	}
+
+	//main.0:
+	llvm::BasicBlock *bb = llvm::BasicBlock::Create(e.m_module->getContext(), "main.0", main_func);
+
+	//ret i32 0
+	llvm::ReturnInst::Create(e.m_module->getContext(),
+	                         llvm::ConstantInt::get(e.m_module->getContext(), llvm::APInt(32, 0)), bb);
+
+	postCompileSteps(e);
 }
 
 } // namespace Interpreter

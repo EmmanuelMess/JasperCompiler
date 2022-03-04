@@ -45,7 +45,7 @@ int main(int argc, char** argv) {
 	    settings,
 	    +[](Compiler::Compiler& env,
 	        Frontend::SymbolTable& context) -> ExitStatus {
-		    // NOTE: We currently implement funcion evaluation in compile(ASTCallExpression)
+		    // NOTE: We currently implement funcion evaluation in compileAny(ASTCallExpression)
 		    // this means we need to create a call expression node to run the program.
 		    // TODO: We need to clean this up
 

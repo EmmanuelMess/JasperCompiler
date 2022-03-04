@@ -78,7 +78,7 @@ ExitStatus execute(
 	GC gc;
 	Compiler env = {&tc, &gc, &tc.m_env.declaration_components};
 	declare_native_functions(env);
-	compile(ast, env);
+	compileAny(ast, env);
 
 	return runner(env, context);
 }
@@ -115,7 +115,7 @@ Value eval_expression(
 	TypeChecker::compute_offsets(ast, 0);
 
 	// TODO?: return a gc_ptr
-	compile(ast, env);
+	compileAny(ast, env);
 	auto value = env.m_stack.pop_unsafe();
 	return value_of(value);
 }

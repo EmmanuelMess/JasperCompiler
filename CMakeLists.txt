@@ -90,6 +90,31 @@ set(INTERPRETER
     src/interpreter/value.cpp
     src/interpreter/value.hpp)
 
+set(COMPILER
+    src/compiler/compiler.cpp
+    src/compiler/compiler.hpp
+    src/compiler/error.cpp
+    src/compiler/error.hpp
+    src/compiler/compile.cpp
+    src/compiler/compile.hpp
+    src/compiler/execute.cpp
+    src/compiler/execute.hpp
+    src/compiler/exit_status_tag.hpp
+    src/compiler/garbage_collector.cpp
+    src/compiler/garbage_collector.hpp
+    src/compiler/gc_ptr.cpp
+    src/compiler/gc_ptr.hpp
+    src/compiler/gc_cell.cpp
+    src/compiler/gc_cell.hpp
+    src/compiler/native.cpp
+    src/compiler/native.hpp
+    src/compiler/stack.cpp
+    src/compiler/stack.hpp
+    src/compiler/utils.cpp
+    src/compiler/utils.hpp
+    src/compiler/value.cpp
+    src/compiler/value.hpp)
+
 set(TEST
     src/test/main.cpp
     src/test/test_set.cpp
@@ -103,6 +128,10 @@ add_executable(Interpreter
     src/interpreter/main.cpp
     ${COMMON}
     ${INTERPRETER})
+add_executable(Compiler
+    src/compiler/main.cpp
+    ${COMMON}
+    ${COMPILER})
 add_executable(Tests
     src/test/main.cpp
     ${COMMON}

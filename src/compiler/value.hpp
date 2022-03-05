@@ -3,6 +3,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <llvm/IR/Value.h>
 
 #include "../utils/interned_string.hpp"
 #include "../utils/span.hpp"
@@ -42,6 +43,10 @@ struct Value {
 	    : tag {ValueTag::Null}
 	    , ptr {nullptr} {}
 
+        explicit Value(llvm::Value* value)
+            : tag {ValueTag::LlvmValue}
+              , as_llvm_value {value} {}
+
 	explicit Value(bool boolean)
 	    : tag {ValueTag::Boolean}
 	    , as_boolean {boolean} {}
@@ -75,6 +80,11 @@ struct Value {
 	template <typename T>
 	T* get_cast();
 
+        [[nodiscard]] llvm::Value* get_llvm_value() const {
+          assert(tag == ValueTag::LlvmValue);
+          return as_llvm_value;
+        }
+
 	[[nodiscard]] int get_integer() const {
 		assert(tag == ValueTag::Integer);
 		return as_integer;
@@ -106,7 +116,8 @@ struct Value {
 	ValueTag tag;
 	union {
 	GcCell* ptr;
-	bool as_boolean;
+	llvm::Value* as_llvm_value;
+        bool as_boolean;
 	int as_integer;
 	float as_float;
 	NativeFunction* as_native_func;

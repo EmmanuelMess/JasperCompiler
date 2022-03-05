@@ -13,6 +13,7 @@ struct Stack {
 	std::vector<Value> m_stack;
 	std::vector<int> m_fp_stack;
 	std::vector<int> m_sp_stack;
+	std::vector<llvm::Function*> m_function_stack;
 
 	void start_stack_frame(int start);
 	void start_stack_frame();
@@ -21,9 +22,11 @@ struct Stack {
 	void start_stack_region();
 	void end_stack_region();
 
-	void push(Value ref);
+	void push(llvm::Function* ref);
+        llvm::Function* pop_function();
 
-	Value pop_unsafe();
+        void push(Value ref);
+        Value pop_unsafe();
 
 	Value& access(int offset);
 	Value& frame_at(int offset);

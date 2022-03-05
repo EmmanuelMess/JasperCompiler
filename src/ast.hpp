@@ -6,6 +6,7 @@
 #include <vector>
 
 #include <climits>
+#include <llvm/IR/Value.h>
 
 #include "./utils/interned_string.hpp"
 #include "typechecker_types.hpp"

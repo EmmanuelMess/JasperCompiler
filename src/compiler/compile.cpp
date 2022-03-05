@@ -27,7 +27,7 @@ void compile(AST::Declaration* ast, Compiler& e) {
 	auto ref = e.new_reference(Value {nullptr});
 	e.m_stack.push(ref.as_value());
 	if (ast->m_value) {
-		compileAny(ast->m_value, e);
+        	compileAny(ast->m_value, e);
 		auto value = e.m_stack.pop_unsafe();
 		ref->m_value = value_of(value);
 	}
@@ -39,26 +39,29 @@ void compile(AST::Program* ast, Compiler& e) {
 		for (auto decl : comp) {
 			auto ref = e.new_reference(e.null());
 			e.global_declare_direct(decl->identifier_text(), ref.get());
-			compileAny(decl->m_value, e);
+                        compileAny(decl->m_value, e);
 			auto value = e.m_stack.pop_unsafe();
 			ref->m_value = value_of(value);
 		}
 	}
 }
 
-llvm::Value * compile(AST::NumberLiteral* ast, Compiler& e) {
-	return llvm::ConstantFP::get(e.m_context, llvm::APFloat(ast->value()));
+
+void compile(AST::NumberLiteral* ast, Compiler& e) {
+        auto v = llvm::ConstantFP::get(e.m_context, llvm::APFloat(ast->value()));
+	e.push_llvm_value(v);
 }
 
-llvm::Value * compile(AST::IntegerLiteral* ast, Compiler& e) {
-	return llvm::ConstantInt::get(e.m_context, llvm::APInt(32, ast->value()));
+void compile(AST::IntegerLiteral* ast, Compiler& e) {
+        auto v = llvm::ConstantInt::get(e.m_context, llvm::APInt(32, ast->value()));
+	e.push_llvm_value(v);
 }
 
-llvm::Constant * compile(AST::StringLiteral* ast, Compiler& e) {
-	llvm::Constant *string =
+void compile(AST::StringLiteral* ast, Compiler& e) {
+	auto string =
 	    llvm::ConstantDataArray::getString(e.m_context, "Error: The head has left the tape.",
 	                                 true);
-	return string;
+	e.push_llvm_value(string);
 	//TODO PUT THIS WHERE THE STRING IS USED
 	//llvm::GlobalVariable *aberrormsg = new llvm::GlobalVariable(
 	//    *e.m_module,
@@ -69,20 +72,23 @@ llvm::Constant * compile(AST::StringLiteral* ast, Compiler& e) {
 	//    "aberrormsg");
 }
 
-llvm::Value * compile(AST::BooleanLiteral* ast, Compiler& e) {
+void compile(AST::BooleanLiteral* ast, Compiler& e) {
 	// TODO this is hack, I think, it uses a 1 bit number to store the bool
-	return llvm::ConstantInt::get(e.m_context, llvm::APInt(1, ast->m_value ? 1 : 0));
+	auto v = llvm::ConstantInt::get(e.m_context, llvm::APInt(1, ast->m_value ? 1 : 0));
+        e.push_boolean(v);
 }
 
 void compile(AST::NullLiteral* ast, Compiler& e) {
-	e.m_stack.push(e.null());
+        //TODO check nulls work
+        auto v = llvm::Constant::getNullValue(llvm::IntegerType::getInt32Ty(e.m_context));
+        e.push_llvm_value(v);
 }
 
 void compile(AST::ArrayLiteral* ast, Compiler& e) {
 	auto result = e.new_list({});
 	result->m_value.reserve(ast->m_elements.size());
 	for (auto& element : ast->m_elements) {
-		compileAny(element, e);
+        	compileAny(element, e);
 		auto ref = e.new_reference(Value {nullptr});
 		ref->m_value = value_of(e.m_stack.pop_unsafe());
 		result->append(ref.get());
@@ -125,8 +131,19 @@ void compile(AST::Block* ast, Compiler& e) {
 void compile(AST::ReturnStatement* ast, Compiler& e) {
 	// TODO: proper error handling
 	compileAny(ast->m_value, e);
-	auto value = e.m_stack.pop_unsafe();
-	e.save_return_value(value_of(value));
+	auto returnValue = e.m_stack.pop_unsafe();
+
+        // Finish off the function.
+        e.m_builder->CreateRet(returnValue.get_llvm_value());
+
+        auto currentFunction = e.m_stack.pop_function();
+        // Validate the generated code, checking for consistency.
+        llvm::verifyFunction(*currentFunction);
+
+        // Run the optimizer on the function.
+        //TODO e.m_function_pass_manager->run(*currentFunction);
+
+	e.save_function(currentFunction);
 }
 
 auto is_callable_type(ValueTag t) -> bool {
@@ -215,8 +232,42 @@ void compile(AST::TernaryExpression* ast, Compiler& e) {
 		compileAny(ast->m_else_expr, e);
 }
 
-void compile(AST::FunctionLiteral* ast, Compiler& e) {
+llvm::Type* llvm_from_type(MonoId type, Compiler& e) {
+  if(type == TypeChecker::BuiltinType::Int) {
+    return llvm::Type::getInt32Ty(e.m_context);
+  } else if(type == TypeChecker::BuiltinType::Float) {
+    return llvm::Type::getFloatTy(e.m_context);
+  } else {
+    llvm::errs() << "Missing " << type;
+    return nullptr;
+  }
+}
 
+llvm::Function *getFunction(AST::FunctionLiteral* ast, Compiler& e) {
+  static std::string currentName = "a";
+  currentName += "a";
+
+  std::vector<llvm::Type *> function_args;
+
+  for(const auto &arg : ast->m_args) {
+    function_args.push_back(llvm_from_type(arg.m_value_type, e));
+  }
+
+  auto function_type =
+      llvm::FunctionType::get(llvm_from_type(ast->m_return_type, e), function_args, false);
+
+  auto Function =
+      llvm::Function::Create(function_type, llvm::Function::ExternalLinkage, currentName, e.m_module.get());
+
+  // Set names for all arguments.
+  unsigned Idx = 0;
+  for (auto &Arg : Function->args())
+    Arg.setName(ast->m_args[Idx++].m_identifier.str());
+
+  return Function;
+}
+
+void compile(AST::FunctionLiteral* ast, Compiler& e) {
 	CapturesType captures;
 	captures.assign(ast->m_captures.size(), nullptr);
 	for (auto const& capture : ast->m_captures) {
@@ -226,8 +277,16 @@ void compile(AST::FunctionLiteral* ast, Compiler& e) {
 		captures[offset] = value.get_cast<Reference>();
 	}
 
-	auto result = e.new_function(ast, std::move(captures));
-	e.m_stack.push(result.as_value());
+        auto result = e.new_function(ast, std::move(captures));
+        e.m_stack.push(result.as_value());
+
+        llvm::Function* function = getFunction(ast, e);
+
+        // Create a new basic block to start insertion into.
+        auto BB = llvm::BasicBlock::Create(e.m_context, "entry", function);
+        e.m_builder->SetInsertPoint(BB);
+
+        e.m_stack.push(function);
 }
 
 void compile(AST::AccessExpression* ast, Compiler& e) {
@@ -393,43 +452,6 @@ void compile(AST::TypeTerm* ast, Compiler& e) {
 	compileAny(ast->m_callee, e);
 }
 
-llvm::Value* compileValue(AST::AST* ast, Compiler& e) {
-
-#define DISPATCH(type)                                                         \
-	case ASTTag::type:                                                    \
-		return compile(static_cast<AST::type*>(ast), e)
-
-#ifdef DEBUG
-	Log::info() << "case in compileAny: " << typed_ast_string[(int)ast->type()];
-#endif
-
-	switch (ast->type()) {
-		DISPATCH(NumberLiteral);
-		DISPATCH(IntegerLiteral);
-		DISPATCH(BooleanLiteral);
-	}
-
-	Log::fatal() << "(internal) unhandled case in compileAny: "
-	             << ast_string[(int)ast->type()];
-}
-
-llvm::Constant* compileConstant(AST::AST* ast, Compiler& e) {
-
-#define DISPATCH(type)                                                         \
-	case ASTTag::type:                                                    \
-		return compile(static_cast<AST::type*>(ast), e)
-
-#ifdef DEBUG
-	Log::info() << "case in compileAny: " << typed_ast_string[(int)ast->type()];
-#endif
-
-	switch (ast->type()) {
-		DISPATCH(StringLiteral);
-	}
-
-	Log::fatal() << "(internal) unhandled case in compileAny: "
-	             << ast_string[(int)ast->type()];
-}
 
 void compileAny(AST::AST* ast, Compiler& e) {
 
@@ -442,9 +464,13 @@ void compileAny(AST::AST* ast, Compiler& e) {
 #endif
 
 	switch (ast->type()) {
-		DISPATCH(NullLiteral);
-		DISPATCH(ArrayLiteral);
-		DISPATCH(FunctionLiteral);
+       		DISPATCH(NumberLiteral);
+       		DISPATCH(IntegerLiteral);
+       		DISPATCH(StringLiteral);
+       		DISPATCH(BooleanLiteral);
+       		DISPATCH(NullLiteral);
+       		DISPATCH(ArrayLiteral);
+       		DISPATCH(FunctionLiteral);
 
 		DISPATCH(Identifier);
 		DISPATCH(CallExpression);
@@ -555,13 +581,31 @@ static bool createExecutableObject(llvm::Module& module) {
 void preCompileSteps(Compiler& e) {
 	const auto name = "BrainF";
 	e.m_module = std::make_unique<llvm::Module>(name, e.m_context);
+
+        // Create a new builder for the module.
+        e.m_builder = std::make_unique<llvm::IRBuilder<>>(e.m_context);
+
+        // Create a new pass manager attached to it.
+        //e.m_function_pass_manager = std::make_unique<llvm::legacy::FunctionPassManager>(e.m_module.get());
+
+        // TODO
+        // Do simple "peephole" optimizations and bit-twiddling optzns.
+        //e.m_function_pass_manager->add(llvm::createInstructionCombiningPass());
+        // Reassociate expressions.
+        //e.m_function_pass_manager->add(llvm::createReassociatePass());
+        // Eliminate Common SubExpressions.
+        //e.m_function_pass_manager->add(llvm::createGVNPass());
+        // Simplify the control flow graph (deleting unreachable blocks, etc).
+        //e.m_function_pass_manager->add(llvm::createCFGSimplificationPass());
+
+        //e.m_function_pass_manager->doInitialization();
 }
 
 void postCompileSteps(Compiler& e) {
-	if (verifyModule(*e.m_module)) {
-		llvm::errs() << "Error: module failed verification.  This shouldn't happen.\n";
-		abort();
-	}
+	//if (verifyModule(*e.m_module)) {
+	//	llvm::errs() << "Error: module failed verification.  This shouldn't happen.\n";
+	//	abort();
+	//}
 
 	e.m_module->print(llvm::errs(), nullptr);
 

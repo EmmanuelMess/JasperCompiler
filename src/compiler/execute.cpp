@@ -78,7 +78,7 @@ ExitStatus execute(
 	GC gc;
 	Compiler env = {&tc, &gc, &tc.m_env.declaration_components};
 	declare_native_functions(env);
-	compileAny(ast, env);
+        compile(ast, env);
 
 	return runner(env, context);
 }

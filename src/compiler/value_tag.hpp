@@ -4,6 +4,7 @@
 	X(Null)                                                                    \
                                                                                \
 	X(Integer)                                                                 \
+	X(LlvmValue)                                                                 \
 	X(Float)                                                                   \
 	X(Boolean)                                                                 \
 	X(String)                                                                  \

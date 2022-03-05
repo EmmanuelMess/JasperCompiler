@@ -42,6 +42,14 @@ Reference* Compiler::global_access(const Identifier& i) {
 }
 
 
+void Compiler::save_function(llvm::Function* f) {
+  // ensure we are not in a return sequence already
+  assert(!m_returning);
+  m_returning = true;
+  //TODO use this info for freeing resources
+}
+
+
 void Compiler::save_return_value(Value v) {
 	// ensure we are not in a return sequence already
 	assert(!m_returning);
@@ -89,6 +97,10 @@ void Compiler::run_gc_if_needed(){
 
 Value Compiler::null() {
 	return Value{nullptr};
+}
+
+void Compiler::push_llvm_value(llvm::Value* v) {
+	m_stack.push(Value{v});
 }
 
 void Compiler::push_integer(int i) {

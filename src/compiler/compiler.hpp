@@ -17,6 +17,8 @@
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Target/TargetOptions.h>
+#include <llvm/Transforms/Scalar.h>
+#include <llvm/Transforms/Scalar/GVN.h>
 #include <llvm/ADT/Optional.h>
 #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/MC/TargetRegistry.h>
@@ -52,7 +54,9 @@ struct Scope {
 struct Compiler {
 	llvm::LLVMContext m_context;
 	std::unique_ptr<llvm::Module> m_module;
-	std::vector<std::pair<llvm::IRBuilder<>*, llvm::BasicBlock*>> builders;
+        std::unique_ptr<llvm::IRBuilder<>> m_builder;
+        //TODO actually optimize
+        std::unique_ptr<llvm::legacy::FunctionPassManager> m_function_pass_manager;
 
 	Stack m_stack;
 	TypeChecker::TypeChecker* m_tc;
@@ -71,6 +75,7 @@ struct Compiler {
 	    , m_gc {gc}
 	    , m_declaration_order {declaration_order} {}
 
+        void save_function(llvm::Function*);
 	void save_return_value(Value);
 	Value fetch_return_value();
 
@@ -84,6 +89,7 @@ struct Compiler {
 	void assign(Value dst, Value src);
 
 	auto null() -> Value;
+        void push_llvm_value(llvm::Value*);
 	void push_integer(int);
 	void push_float(float);
 	void push_boolean(bool);

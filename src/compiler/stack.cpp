@@ -1,6 +1,7 @@
 #include "stack.hpp"
 
 #include <cassert>
+#include <llvm/IR/Function.h>
 
 namespace Compiler {
 
@@ -35,6 +36,15 @@ void Stack::end_stack_region() {
 	m_sp_stack.pop_back();
 
 	m_stack.resize(m_stack_ptr);
+}
+
+void Stack::push(llvm::Function* ref) {
+  m_function_stack.push_back(ref);
+}
+llvm::Function* Stack::pop_function() {
+  auto r = m_function_stack.back();
+  m_function_stack.pop_back();
+  return r;
 }
 
 void Stack::push(Value ref){
